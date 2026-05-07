@@ -3,4 +3,3 @@ aiohttp
 lxml
 flask
 openpyxl
-gunicorn
