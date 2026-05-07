@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SiteCrawler — Index Your Web Content</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0e0e14;
+    --paper: #f5f3ee;
+    --cream: #ede9e0;
+    --accent: #c84b2f;
+    --accent-muted: #e8a090;
+    --green: #2d6a4f;
+    --green-light: #d8f3dc;
+    --blue: #1d3557;
+    --line: #ccc8be;
+    --mono: 'DM Mono', monospace;
+    --serif: 'Fraunces', Georgia, serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  header {
+    border-bottom: 2px solid var(--ink);
+    padding: 36px 0 24px;
+    margin-bottom: 48px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .logo {
+    font-family: var(--serif);
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+
+  .logo span {
+    color: var(--accent);
+    font-style: italic;
+    font-weight: 300;
+  }
+
+  .tagline {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #888;
+    padding-bottom: 4px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 500;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  .card {
+    background: #fff;
+    border: 1.5px solid var(--line);
+    border-radius: 3px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: 3px 3px 0 var(--line);
+  }
+
+  label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .hint {
+    font-size: 12px;
+    color: #888;
+    font-style: italic;
+    margin-top: -4px;
+    margin-bottom: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 300;
+  }
+
+  input[type="text"],
+  input[type="url"],
+  input[type="number"] {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 2px;
+    background: var(--paper);
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+    margin-bottom: 20px;
+  }
+
+  input:focus {
+    border-color: var(--ink);
+    background: #fff;
+  }
+
+  input::placeholder { color: #bbb; }
+
+  /* ── Mode toggle ── */
+  .mode-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1.5px solid var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .mode-btn {
+    padding: 12px 16px;
+    background: var(--paper);
+    border: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .mode-btn:first-child {
+    border-right: 1.5px solid var(--line);
+  }
+
+  .mode-btn.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .mode-btn .mode-title {
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  .mode-btn .mode-desc {
+    font-size: 10px;
+    opacity: 0.6;
+    text-transform: none;
+    letter-spacing: 0;
+    font-style: italic;
+  }
+
+  .mode-btn.active .mode-desc { opacity: 0.5; }
+
+  /* URL input panel — switches label/hint based on mode */
+  #url-label-sitemap, #url-label-spider { display: none; }
+
+  /* Spider-only field */
+  #spider-options { display: none; }
+
+  /* ── Fields grid ── */
+  .fields-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .field-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--paper);
+    user-select: none;
+  }
+
+  .field-toggle:hover { border-color: var(--ink); background: var(--cream); }
+  .field-toggle.active { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+  .field-toggle input[type="checkbox"] { display: none; }
+
+  .toggle-check {
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid currentColor;
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+
+  .field-toggle.active .toggle-check::after { content: '✓'; color: var(--paper); }
+  .field-toggle.active .field-desc { color: #aaa; }
+
+  .field-name { font-size: 12px; font-weight: 500; letter-spacing: 0.05em; line-height: 1.3; margin-bottom: 3px; }
+  .field-desc { font-size: 11px; color: #777; line-height: 1.4; font-style: italic; }
+
+  /* ── Run button ── */
+  .btn-run {
+    width: 100%;
+    padding: 16px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 2px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 8px;
+    font-weight: 500;
+  }
+
+  .btn-run:hover { background: var(--accent); }
+  .btn-run:disabled { background: #aaa; cursor: not-allowed; }
+
+  .btn-run .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .btn-run.loading .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Progress ── */
+  #progress-panel { display: none; margin-top: 24px; }
+
+  .progress-bar-wrap {
+    height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-bottom: 16px;
+  }
+  .progress-bar-fill {
+    height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s ease; width: 0%;
+  }
+
+  .progress-stats { display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 16px; letter-spacing: 0.05em; }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; padding: 4px 10px; border-radius: 20px;
+    letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500;
+  }
+  .status-pill.queued { background: #f0f0f0; color: #666; }
+  .status-pill.crawling { background: #fff3e0; color: #e65100; }
+  .status-pill.done { background: var(--green-light); color: var(--green); }
+  .status-pill.error { background: #fde8e8; color: var(--accent); }
+
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .status-pill.crawling .status-dot { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .log-wrap {
+    background: var(--ink); border-radius: 2px; padding: 16px;
+    max-height: 220px; overflow-y: auto; margin-top: 16px;
+    font-size: 11px; line-height: 1.7; color: #7ec8a0;
+  }
+  .log-wrap .log-line { display: block; }
+  .log-wrap .log-line.err { color: var(--accent-muted); }
+  .log-wrap .log-line.ok { color: #7ec8a0; }
+  .log-wrap .log-line.info { color: #888; }
+
+  .btn-download {
+    display: none; width: 100%; padding: 16px;
+    background: var(--green); color: #fff; border: none; border-radius: 2px;
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase;
+    cursor: pointer; align-items: center; justify-content: center; gap: 10px;
+    margin-top: 16px; font-weight: 500; text-decoration: none; transition: background 0.15s;
+  }
+  .btn-download:hover { background: #1e4d38; }
+  .btn-download.visible { display: flex; }
+
+  footer {
+    border-top: 1px solid var(--line); padding-top: 24px; margin-top: 48px;
+    font-size: 11px; color: #aaa; display: flex; justify-content: space-between;
+  }
+
+  .error-msg {
+    background: #fde8e8; border: 1.5px solid var(--accent-muted); border-radius: 2px;
+    padding: 12px 16px; font-size: 12px; color: var(--accent); margin-top: 12px; display: none;
+  }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .two-col input { margin-bottom: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="logo">Site<span>Crawler</span></div>
+    </div>
+    <div class="tagline">Sitemap or Spider → Excel in one click</div>
+  </header>
+
+  <!-- ── Step 1: Mode ── -->
+  <div class="section-label">01 — Crawl Mode</div>
+  <div class="card">
+    <label style="margin-bottom:10px;">How should the crawler discover pages?</label>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="mode-sitemap" onclick="setMode('sitemap')">
+        <span class="mode-title">📄 Sitemap</span>
+        <span class="mode-desc">Parse sitemap.xml for a precise list of URLs</span>
+      </button>
+      <button class="mode-btn" id="mode-spider" onclick="setMode('spider')">
+        <span class="mode-title">🕷 Spider</span>
+        <span class="mode-desc">Start at a URL and follow internal links automatically</span>
+      </button>
+    </div>
+
+    <!-- Sitemap URL input -->
+    <div id="panel-sitemap">
+      <label for="input-url">Sitemap URL</label>
+      <div class="hint">Full URL to your sitemap.xml or sitemap_index.xml. Nested sitemaps are followed automatically.</div>
+      <input type="url" id="input-url" placeholder="https://www.yoursite.com/sitemap.xml" style="margin-bottom:0">
+    </div>
+
+    <!-- Spider URL input -->
+    <div id="panel-spider" style="display:none">
+      <label for="input-url-spider">Starting URL</label>
+      <div class="hint">The homepage or root URL to begin from. The crawler will follow every internal link it finds.</div>
+      <input type="url" id="input-url-spider" placeholder="https://www.yoursite.com/" style="margin-bottom:16px">
+      <label for="max-pages">Page Limit</label>
+      <div class="hint">Maximum number of pages to crawl. Useful for large sites — start lower to test.</div>
+      <input type="number" id="max-pages" value="300" min="1" max="2000" style="margin-bottom:0">
+    </div>
+  </div>
+
+  <!-- ── Step 2: Output ── -->
+  <div class="section-label">02 — Output File</div>
+  <div class="card">
+    <label for="filename">Excel File Name</label>
+    <div class="hint">Name for your downloaded file — .xlsx is added automatically.</div>
+    <input type="text" id="filename" placeholder="my-site-crawl" style="margin-bottom:0">
+  </div>
+
+  <!-- ── Step 2b: ScrapingBee ── -->
+  <div class="section-label" style="margin-top:0;">02b — Anti-Bot Bypass <span style="font-style:italic;text-transform:none;letter-spacing:0;color:#aaa;font-size:10px;">(optional)</span></div>
+  <div class="card" style="border-color:#e8c97a;box-shadow:3px 3px 0 #e8c97a44;">
+    <label for="scrapingbee-key">ScrapingBee API Key</label>
+    <div class="hint">If a page is blocked by bot protection, the crawler automatically retries it — first with a premium proxy, then stealth proxy if still blocked. Leave blank to skip. Get a key at <a href="https://www.scrapingbee.com" target="_blank" style="color:var(--accent)">scrapingbee.com</a>. <strong style="color:var(--ink)">When deployed to Railway, set this as the <code>SCRAPINGBEE_API_KEY</code> environment variable instead.</strong></div>
+    <input type="text" id="scrapingbee-key" placeholder="Paste your API key here..." autocomplete="off" style="margin-bottom:20px;font-size:12px;letter-spacing:0.04em;">
+    <label for="claude-api-url">Claude Extraction API URL</label>
+    <div class="hint">Optional. If ScrapingBee is also blocked, the crawler will call this API as a last resort. It returns <code>text</code> (content) and a <code>page_title</code> field. <strong style="color:var(--ink)">On Railway, set as <code>CLAUDE_API_URL</code> environment variable.</strong></div>
+    <input type="text" id="claude-api-url" placeholder="https://your-api.execute-api.us-east-1.amazonaws.com/Prod/process" autocomplete="off" style="margin-bottom:0;font-size:12px;letter-spacing:0.04em;">
+  </div>
+
+  <!-- ── Step 3: Fields ── -->
+  <div class="section-label">03 — Fields to Extract</div>
+  <div class="card">
+    <label style="margin-bottom:14px;">Choose what data to pull from each page</label>
+    <div class="fields-grid" id="fields-grid">
+
+      <label class="field-toggle active" data-field="url">
+        <input type="checkbox" value="url" checked>
+        <div class="toggle-check"></div>
+        <div>
+          <div class="field-name">Page URL</div>
+          <div class="field-desc">The full web address of each page</div>
+        </div>
+      </label>
+
+      <label class="field-toggle active" data-field="title">
+        <input type="checkbox" value="title" checked>
+        <div class="toggle-check"></div>
+        <div>
+          <div class="field-name">Page Title</div>
+          <div class="field-desc">The &lt;title&gt; tag — shown in browser tabs and search results</div>
+        </div>
+      </label>
+
+      <label class="field-toggle active" data-field="content">
+        <input type="checkbox" value="content" checked>
+        <div class="toggle-check"></div>
+        <div>
+          <div class="field-name">Main Content</div>
+          <div class="field-desc">Body text from &lt;main&gt; (or &lt;article&gt; / &lt;body&gt; as fallback), stripped flat for indexing</div>
+        </div>
+      </label>
+
+      <label class="field-toggle active" data-field="image_url">
+        <input type="checkbox" value="image_url" checked>
+        <div class="toggle-check"></div>
+        <div>
+          <div class="field-name">Hero Image URL</div>
+          <div class="field-desc">Prefers og:image, then Twitter card, then first large &lt;img&gt;</div>
+        </div>
+      </label>
+
+      <label class="field-toggle" data-field="meta_description">
+        <input type="checkbox" value="meta_description">
+        <div class="toggle-check"></div>
+        <div>
+          <div class="field-name">Meta Description</div>
+          <div class="field-desc">The SEO description tag — often used as a search snippet</div>
+        </div>
+      </label>
+
+      <label class="field-toggle" data-field="h1">
+        <input type="checkbox" value="h1">
+        <div class="toggle-check"></div>
+        <div>
+          <div class="field-name">H1 Heading</div>
+          <div class="field-desc">The primary visible headline (may differ from the title tag)</div>
+        </div>
+      </label>
+
+      <label class="field-toggle" data-field="word_count">
+        <input type="checkbox" value="word_count">
+        <div class="toggle-check"></div>
+        <div>
+          <div class="field-name">Word Count</div>
+          <div class="field-desc">Total words in main content — useful for filtering thin pages</div>
+        </div>
+      </label>
+
+      <label class="field-toggle" data-field="links">
+        <input type="checkbox" value="links">
+        <div class="toggle-check"></div>
+        <div>
+          <div class="field-name">Internal Links</div>
+          <div class="field-desc">Up to 20 internal links found on the page</div>
+        </div>
+      </label>
+
+    </div>
+  </div>
+
+  <!-- ── Step 4: Run ── -->
+  <div class="section-label">04 — Run</div>
+  <div class="card">
+    <button class="btn-run" id="btn-run" onclick="startCrawl()">
+      <div class="spinner"></div>
+      <span id="btn-label">▶ Start Crawling</span>
+    </button>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div id="progress-panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;margin-top:20px;">
+        <span id="status-pill" class="status-pill queued"><span class="status-dot"></span><span id="status-text">Queued</span></span>
+        <span id="progress-pct" style="font-size:11px;color:#888;letter-spacing:0.05em;">0%</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-stats">
+        <span id="progress-count">0 / 0 pages</span>
+        <span id="progress-eta"></span>
+      </div>
+      <div class="log-wrap" id="log-wrap"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <a class="btn-download" id="btn-download" href="#" onclick="downloadExcel(event)" style="margin-top:0;flex:2;">
+          ⬇ Download Excel File
+        </a>
+        <a class="btn-download" id="btn-log" href="#" onclick="downloadLog(event)" style="margin-top:0;flex:1;background:#444;font-size:11px;">
+          ⬇ Full Log
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Powered by Crawl4AI + Flask</span>
+    <span>Running at localhost:5000</span>
+  </footer>
+
+</div>
+
+<script>
+  // ── Mode switching
+  let currentMode = 'sitemap';
+
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('mode-sitemap').classList.toggle('active', mode === 'sitemap');
+    document.getElementById('mode-spider').classList.toggle('active', mode === 'spider');
+    document.getElementById('panel-sitemap').style.display = mode === 'sitemap' ? 'block' : 'none';
+    document.getElementById('panel-spider').style.display = mode === 'spider' ? 'block' : 'none';
+  }
+
+  // ── Field toggles
+  document.querySelectorAll('.field-toggle').forEach(label => {
+    label.addEventListener('click', () => {
+      const cb = label.querySelector('input[type="checkbox"]');
+      cb.checked = !cb.checked;
+      label.classList.toggle('active', cb.checked);
+    });
+  });
+
+  let currentJobId = null;
+  let pollInterval = null;
+  let startTime = null;
+
+  function getSelectedFields() {
+    return Array.from(document.querySelectorAll('.field-toggle.active input')).map(cb => cb.value);
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('error-msg').style.display = 'none';
+  }
+
+  async function startCrawl() {
+    hideError();
+
+    const isSitemap = currentMode === 'sitemap';
+    const url = isSitemap
+      ? document.getElementById('input-url').value.trim()
+      : document.getElementById('input-url-spider').value.trim();
+    const filename = document.getElementById('filename').value.trim() || 'crawl_results';
+    const fields = getSelectedFields();
+    const maxPages = parseInt(document.getElementById('max-pages').value) || 300;
+
+    if (!url) { showError('Please enter a URL.'); return; }
+    if (!url.startsWith('http')) { showError('Please enter a full URL starting with https://'); return; }
+    if (fields.length === 0) { showError('Please select at least one field to extract.'); return; }
+
+    const btn = document.getElementById('btn-run');
+    btn.classList.add('loading');
+    btn.disabled = true;
+    document.getElementById('btn-label').textContent = 'Starting…';
+    document.getElementById('progress-panel').style.display = 'block';
+    document.getElementById('btn-download').classList.remove('visible');
+    document.getElementById('log-wrap').innerHTML = '';
+    startTime = Date.now();
+
+    try {
+      const res = await fetch('/api/crawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: currentMode, url, filename, fields, max_pages: maxPages,
+          scrapingbee_key: document.getElementById('scrapingbee-key').value.trim(),
+          claude_api_url: document.getElementById('claude-api-url').value.trim() })
+      });
+      const data = await res.json();
+      if (data.error) { showError(data.error); resetBtn(); return; }
+      currentJobId = data.job_id;
+      pollInterval = setInterval(pollStatus, 1200);
+    } catch (e) {
+      showError('Could not connect to the server. Is server.py running?');
+      resetBtn();
+    }
+  }
+
+  function resetBtn() {
+    const btn = document.getElementById('btn-run');
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    document.getElementById('btn-label').textContent = '▶ Start Crawling';
+  }
+
+  async function pollStatus() {
+    if (!currentJobId) return;
+    try {
+      const res = await fetch(`/api/status/${currentJobId}`);
+      const data = await res.json();
+      updateUI(data);
+      if (data.status === 'done' || data.status === 'error') {
+        clearInterval(pollInterval);
+        resetBtn();
+      }
+    } catch (e) { console.error('Poll error', e); }
+  }
+
+  function updateUI(data) {
+    const { status, progress, total, log, error, filename } = data;
+
+    const pill = document.getElementById('status-pill');
+    const statusText = document.getElementById('status-text');
+    pill.className = 'status-pill ' + (status === 'fetching_sitemap' || status === 'building_excel' ? 'crawling' : status);
+    const labels = {
+      queued: 'Queued', fetching_sitemap: 'Fetching Sitemap',
+      crawling: 'Crawling', building_excel: 'Building Excel…',
+      done: 'Complete ✓', error: 'Error'
+    };
+    statusText.textContent = labels[status] || status;
+
+    const pct = total > 0 ? Math.round((progress / total) * 100) : (status === 'fetching_sitemap' ? 5 : 0);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-pct').textContent = pct + '%';
+    document.getElementById('progress-count').textContent =
+      total > 0 ? `${progress} / ${total} pages` : `${progress} pages found…`;
+
+    if (progress > 0 && total > 0 && startTime) {
+      const elapsed = (Date.now() - startTime) / 1000;
+      const rate = progress / elapsed;
+      const remaining = (total - progress) / rate;
+      document.getElementById('progress-eta').textContent =
+        remaining > 5 ? `~${Math.ceil(remaining)}s remaining` : '';
+    }
+
+    const logWrap = document.getElementById('log-wrap');
+    logWrap.innerHTML = (log || []).map(line => {
+      const cls = line.startsWith('ERR') ? 'err' : line.startsWith('OK') ? 'ok' : 'info';
+      return `<span class="log-line ${cls}">${escHtml(line)}</span>`;
+    }).join('\n');
+    logWrap.scrollTop = logWrap.scrollHeight;
+
+    if (status === 'error' && error) showError(error);
+
+    if (status === 'done') {
+      const dl = document.getElementById('btn-download');
+      dl.textContent = `⬇ Download ${filename || 'crawl_results.xlsx'}`;
+      dl.classList.add('visible');
+      document.getElementById('btn-log').classList.add('visible');
+    }
+  }
+
+  function downloadExcel(e) {
+    e.preventDefault();
+    if (currentJobId) window.location.href = `/api/download/${currentJobId}`;
+  }
+
+  function downloadLog(e) {
+    e.preventDefault();
+    if (currentJobId) window.location.href = `/api/log/${currentJobId}`;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>

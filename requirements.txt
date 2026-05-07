@@ -1,0 +1,6 @@
+crawl4ai
+aiohttp
+lxml
+flask
+openpyxl
+gunicorn
